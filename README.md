@@ -1,3 +1,3 @@
-#Projet Paint
+# Projet Paint
 
 ## Fonctionnalité
