@@ -29,9 +29,6 @@
 #include <stdlib.h>
 #include "bitmap.h"
 
-char ennemi[4] = {0,0,0,0};
-int score = 0;
-char perdu = 0;
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -79,6 +76,7 @@ SDRAM_HandleTypeDef hsdram1;
 
 osThreadId defaultTaskHandle;
 osThreadId ModeHandle;
+osThreadId PeindreHandle;
 osMessageQId myQueueUARTHandle;
 osMutexId myMutexLCDHandle;
 /* USER CODE BEGIN PV */
@@ -108,6 +106,7 @@ static void MX_FMC_Init(void);
 static void MX_DMA2D_Init(void);
 void StartDefaultTask(void const * argument);
 void StartMode(void const * argument);
+void StartPeindre(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -115,8 +114,11 @@ void StartMode(void const * argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-#define Radius 15
+char radius = 10;
+char brush = 0;
+uint32_t couleur = 0xFFFF0000;
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
+char TestConditionBord(uint16_t x,uint16_t y,uint16_t radius);
 uint8_t rxbuffer[10]; //var globale
 /* USER CODE END 0 */
 
@@ -127,7 +129,7 @@ uint8_t rxbuffer[10]; //var globale
 int main(void)
 {
   /* USER CODE BEGIN 1 */
- 	char text[50]={};
+   	char text[50]={};
 	static TS_StateTypeDef  TS_State;
 	uint32_t potl,potr,joystick_h, joystick_v;
 	ADC_ChannelConfTypeDef sConfig = {0};
@@ -176,11 +178,16 @@ int main(void)
   BSP_LCD_LayerDefaultInit(0, LCD_FB_START_ADDRESS);
   BSP_LCD_LayerDefaultInit(1, LCD_FB_START_ADDRESS+ BSP_LCD_GetXSize()*BSP_LCD_GetYSize()*4);
   BSP_LCD_DisplayOn();
-  BSP_LCD_SelectLayer(1);
-  BSP_LCD_Clear(LCD_COLOR_WHITE);
-  BSP_LCD_SetFont(&Font24);
-  BSP_LCD_SetTextColor(LCD_COLOR_BLUE);
+  BSP_LCD_SetFont(&Font12);
   BSP_LCD_SetBackColor(LCD_COLOR_WHITE);
+  BSP_LCD_SelectLayer(1);
+  BSP_LCD_Clear(LCD_COLOR_TRANSPARENT);
+  BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
+  BSP_LCD_FillRect(0, 245, 480, 5);
+  BSP_LCD_FillRect(435, 0, 5, 245);
+  BSP_LCD_SelectLayer(0);
+  BSP_LCD_Clear(LCD_COLOR_WHITE);
+  BSP_LCD_SetTextColor(LCD_COLOR_RED);
 
   BSP_TS_Init(BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
   HAL_UART_Receive_IT(&huart1,rxbuffer,1);
@@ -221,6 +228,10 @@ int main(void)
   /* definition and creation of Mode */
   osThreadDef(Mode, StartMode, osPriorityIdle, 0, 512);
   ModeHandle = osThreadCreate(osThread(Mode), NULL);
+
+  /* definition and creation of Peindre */
+  osThreadDef(Peindre, StartPeindre, osPriorityIdle, 0, 1024);
+  PeindreHandle = osThreadCreate(osThread(Peindre), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -1435,7 +1446,25 @@ Message = rxbuffer[0];
 xQueueSendFromISR(myQueueUARTHandle, &Message, 0);
 HAL_GPIO_WritePin(LED14_GPIO_Port,LED14_Pin,0);
 }
+/* TestConditionBord*/
+/*
+test les condition de bord en un point pour ne pas ecrire
+hors de l'écran.
+*/
+char TestConditionBord(uint16_t x, uint16_t y, uint16_t rad)
+{
+	char bool = 0;
+	if(((x-rad)>=0) && ((x+rad)<=435) && ((y-rad)>=0) && ((y+rad)<246))
+	{
+		bool = 1;
+	}
+	return bool;
+}
 
+void LCD_PAINTBRUSH(uint16_t x, uint16_t y, radius)
+{
+	if(brush == 0);
+}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -1469,28 +1498,34 @@ void StartMode(void const * argument)
   /* Infinite loop */
   TickType_t xLastWakeTime;
   xLastWakeTime = xTaskGetTickCount();
-  static TS_StateTypeDef  TS_State;
-  char etat = 'p';
+  char etat = 'm'; // On commence à l'état du menu
   char layer = '0';
-  char message_layer[] = "selectionner le layer (1 ou 2)";
-  BSP_LCD_SetTransparency(1, 0x00);
-  BSP_LCD_Clear(LCD_COLOR_WHITE);
-  BSP_LCD_SetTextColor(LCD_COLOR_RED);
-  BSP_LCD_SetTransparency(1, 0x00);
+  char message[] = "deplacer vous avec 'q' et 'd', valider avec 'enter'";
+  char text[] = "	layer  |  pinceau  |  transparence  |  couleur  |  taille";
   for(;;)
   {
-	  xQueueReceive(myQueueUARTHandle, &etat, 25);
+	  //xQueueReceive(myQueueUARTHandle, &etat, 25);
 	  switch(etat)
 	  {
-	  case 'p' :
-		  BSP_TS_GetState(&TS_State);
-		  if(TS_State.touchDetected)
+	  case 'r' :
+		  break; //etat de repos aucun mode n'est changé
+	  case 'm' : //etat d'affichage du menu
+		  if(myMutexLCDHandle != NULL)
 		  {
-			  BSP_LCD_FillCircle(TS_State.touchX[0],TS_State.touchY[0],20);
-		  }
+			   if(xSemaphoreTake(myMutexLCDHandle,1) == pdTRUE)
+			   {
+				   BSP_LCD_SetTextColor(LCD_COLOR_RED);
+				   BSP_LCD_DisplayStringAt(0, 252,(uint8_t*) text, CENTER_MODE);
+				   BSP_LCD_SetTextColor(couleur);
+				   BSP_LCD_FillCircle(460, 20, 15);
+				   LCD_PAINTBRUSH(460, 60);
+				   xSemaphoreGive(myMutexLCDHandle);
+			   }
+		   }
+		  etat = 'r';
 		  break;
 	  case 'l' :
-		  HAL_UART_Transmit(&huart1, message_layer, 31, 10);
+		  HAL_UART_Transmit(&huart1, message, 52, 20);
 		  xQueueReceive(myQueueUARTHandle, &layer, 2000);
 		  layer = layer - 48;
 		  if(layer==0)
@@ -1503,11 +1538,45 @@ void StartMode(void const * argument)
 			  BSP_LCD_SelectLayer(layer);
 			  BSP_LCD_SetTextColor(LCD_COLOR_GREEN);
 		  }
-		  etat = 'p';
+		  break;
 	  }
 	  vTaskDelayUntil(&xLastWakeTime, 100);
   }
   /* USER CODE END StartMode */
+}
+
+/* USER CODE BEGIN Header_StartPeindre */
+/**
+* @brief Function implementing the Peindre thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartPeindre */
+void StartPeindre(void const * argument)
+{
+  /* USER CODE BEGIN StartPeindre */
+  TickType_t xLastWakeTime;
+  xLastWakeTime = xTaskGetTickCount();
+  static TS_StateTypeDef  TS_State;
+  /* Infinite loop */
+  for(;;)
+  {
+
+	  BSP_TS_GetState(&TS_State);
+	  if(TS_State.touchDetected && (TestConditionBord(TS_State.touchX[0], TS_State.touchY[0], radius)))
+	  {
+		  if(myMutexLCDHandle != NULL)
+		   {
+			   if(xSemaphoreTake(myMutexLCDHandle,1) == pdTRUE)
+			   {
+				   BSP_LCD_FillCircle(TS_State.touchX[0],TS_State.touchY[0],radius);
+				   xSemaphoreGive(myMutexLCDHandle);
+			   }
+		   }
+	  }
+	  vTaskDelayUntil(&xLastWakeTime, 3);
+  }
+  /* USER CODE END StartPeindre */
 }
 
  /**
