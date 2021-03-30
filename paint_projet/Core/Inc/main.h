@@ -86,6 +86,7 @@ void Error_Handler(void);
 #define OTG_FS_VBUS_GPIO_Port GPIOJ
 #define Audio_INT_Pin GPIO_PIN_6
 #define Audio_INT_GPIO_Port GPIOD
+#define Audio_INT_EXTI_IRQn EXTI9_5_IRQn
 #define NC1_Pin GPIO_PIN_8
 #define NC1_GPIO_Port GPIOI
 #define LCD_DE_Pin GPIO_PIN_7
@@ -160,8 +161,9 @@ void Error_Handler(void);
 #define LCD_G0_GPIO_Port GPIOJ
 #define LCD_G2_Pin GPIO_PIN_9
 #define LCD_G2_GPIO_Port GPIOJ
-#define BP_JOYSTICK_Pin GPIO_PIN_7
-#define BP_JOYSTICK_GPIO_Port GPIOG
+#define BP_joystick_Pin GPIO_PIN_7
+#define BP_joystick_GPIO_Port GPIOG
+#define BP_joystick_EXTI_IRQn EXTI9_5_IRQn
 #define NC2_Pin GPIO_PIN_2
 #define NC2_GPIO_Port GPIOH
 #define LCD_R7_Pin GPIO_PIN_6
