@@ -119,6 +119,7 @@ char brush = 0;
 uint32_t couleur = 0xFFFF0000;
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 char TestConditionBord(uint16_t x,uint16_t y,uint16_t radius);
+void LCD_PAINTBRUSH(uint16_t x, uint16_t y,uint16_t rad);
 uint8_t rxbuffer[10]; //var globale
 /* USER CODE END 0 */
 
@@ -447,7 +448,7 @@ static void MX_ADC3_Init(void)
   }
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
-  sConfig.Channel = ADC_CHANNEL_6;
+  sConfig.Channel = ADC_CHANNEL_7;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc3, &sConfig) != HAL_OK)
@@ -1461,9 +1462,13 @@ char TestConditionBord(uint16_t x, uint16_t y, uint16_t rad)
 	return bool;
 }
 
-void LCD_PAINTBRUSH(uint16_t x, uint16_t y, radius)
+void LCD_PAINTBRUSH(uint16_t x, uint16_t y,uint16_t rad)
 {
-	if(brush == 0);
+	if(brush == 0)
+	{
+	   BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
+	   BSP_LCD_FillCircle(x, y, rad);
+	}
 }
 /* USER CODE END 4 */
 
@@ -1518,7 +1523,7 @@ void StartMode(void const * argument)
 				   BSP_LCD_DisplayStringAt(0, 252,(uint8_t*) text, CENTER_MODE);
 				   BSP_LCD_SetTextColor(couleur);
 				   BSP_LCD_FillCircle(460, 20, 15);
-				   LCD_PAINTBRUSH(460, 60);
+				   LCD_PAINTBRUSH(460, 60, 15);
 				   xSemaphoreGive(myMutexLCDHandle);
 			   }
 		   }
@@ -1574,7 +1579,7 @@ void StartPeindre(void const * argument)
 			   }
 		   }
 	  }
-	  vTaskDelayUntil(&xLastWakeTime, 3);
+	  vTaskDelayUntil(&xLastWakeTime, 1);
   }
   /* USER CODE END StartPeindre */
 }
