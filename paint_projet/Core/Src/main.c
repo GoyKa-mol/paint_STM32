@@ -132,13 +132,21 @@ char brush = 0;
  */
 char etat = 1; // On commence à l'état du menu
 char etat_int = 2; //état intermédiaire (sur lequel le curseur est)
-uint32_t couleur = 0xFFFF0000;
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 char TestConditionBord(uint16_t x,uint16_t y,uint16_t radius);
 void LCD_PAINTBRUSH(uint16_t x, uint16_t y,uint16_t rad);
-
+void AfficheTonalite();
+uint32_t FindCouleur(float ton, float sat, float lum);
+void AfficheLuminosite(float ton, float sat);
+void AfficheSaturation(float ton, float lum);
+float FindSaturation(uint16_t pos);
+float FindTonalite(uint16_t pos);
+float FindLuminosite(uint16_t pos);
+float modulo(float val, char mod);
+float absolu(float val);
 uint8_t rxbuffer[10]; //var globale
+uint32_t couleur;
 /* USER CODE END 0 */
 
 /**
@@ -241,11 +249,11 @@ int main(void)
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityIdle, 0, 128);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* definition and creation of Mode */
-  osThreadDef(Mode, StartMode, osPriorityNormal, 0, 1024);
+  osThreadDef(Mode, StartMode, osPriorityAboveNormal, 0, 4096);
   ModeHandle = osThreadCreate(osThread(Mode), NULL);
 
   /* definition and creation of Peindre */
@@ -1479,7 +1487,9 @@ Message = rxbuffer[0];
 xQueueSendFromISR(myQueueUARTHandle, &Message, 0);
 HAL_GPIO_WritePin(LED14_GPIO_Port,LED14_Pin,0);
 }
-
+/*
+ * Interuption sur le click joystick
+ */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	HAL_GPIO_WritePin(LED14_GPIO_Port,LED14_Pin,1);
@@ -1508,6 +1518,217 @@ void LCD_PAINTBRUSH(uint16_t x, uint16_t y,uint16_t rad)
 	   BSP_LCD_FillCircle(x, y, rad);
 	}
 }
+/*
+ * Affiche le spectre RVB pour que l'utilisateur puisse faire son choix de couleur
+ * pour afficher toutes les tonalité il faudrait 256*6 = 1536 pixels, on prend donc que
+ * 64 niveaux de tonalité pour chaque mélange (R+V, V+R, V+B, B+V, B+R, R+B). Soit un total
+ * de 64*6 = 384 pixels nécessaire
+ */
+void AfficheTonalite()
+{
+	uint32_t RVB = 0x0;
+	BSP_LCD_SelectLayer(1);
+	BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
+	BSP_LCD_FillRect(0, 251, 480, 21);
+	//affichage R+V :
+	for(uint32_t i = 0;i<256; i = i+4)
+   {
+		RVB = 0xFFFF0000 | (i<<8); //Red à 255, Vert augmente
+		for(char j = 0; j<18; j++)
+		{
+			BSP_LCD_DrawPixel(50+i/4, 252+j, RVB);
+		}
+   }
+	//affichage V+R :
+	for(uint32_t i = 252;i<253; i = i-4)
+		// i est un uint donc quand i passe en dessus de 0 il est interprèter comme un grand nombre d'où le i<253
+   {
+		RVB = 0xFF00FF00 | (i<<16); //Vert à 255, Red diminue
+		for(char j = 0; j<18; j++)
+		{
+			BSP_LCD_DrawPixel(114+(63-i/4), 252+j, RVB);
+		}
+   }
+	//affichage V+B :
+	for(uint32_t i = 0;i<256; i = i+4)
+   {
+		RVB = 0xFF00FF00 | i; // Vert à 255, Bleu augmente
+		for(char j = 0; j<18; j++)
+		{
+			BSP_LCD_DrawPixel(178+i/4, 252+j, RVB);
+		}
+   }
+	//affichage B+V :
+	for(uint32_t i = 252;i<253; i = i-4)
+   {
+		RVB = 0xFF0000FF | (i<<8); // Bleu à 255, Vert diminue
+		for(char j = 0; j<18; j++)
+		{
+			BSP_LCD_DrawPixel(242+(63-i/4), 252+j, RVB);
+		}
+   }
+	//affichage B+R :
+	for(uint32_t i = 0;i<256; i = i+4)
+   {
+		RVB = 0xFF0000FF | (i<<16);// Bleu à 255, Red augmente
+		for(char j = 0; j<18; j++)
+		{
+			BSP_LCD_DrawPixel(306+i/4, 252+j, RVB);
+		}
+   }
+	//affichage R+B :
+	for(uint32_t i = 252;i<253; i = i-4)
+   {
+		RVB = 0xFFFF0000 | (i);// Red à 255, Bleu diminue
+		for(char j = 0; j<18; j++)
+		{
+			BSP_LCD_DrawPixel(370+(63-i/4), 252+j, RVB);
+		}
+   }
+	osDelay(200);
+}
+
+/*
+ * Affiche le dégradé de luminosité pour que l'utilisateur puisse faire son choix
+ */
+void AfficheLuminosite(float ton, float sat)
+{
+	float lum;
+	uint32_t color;
+	BSP_LCD_SelectLayer(1);
+	BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
+	BSP_LCD_FillRect(0, 251, 480, 21);
+	for(uint32_t i = 0;i<256;i++)
+    {
+		lum = (float)i/255;
+		color = FindCouleur(ton, sat, lum) | 0xFF000000;
+		for(char j = 0; j<18; j++)
+		{
+			BSP_LCD_DrawPixel(100+i, 252+j, color);
+		}
+    }
+	osDelay(200);
+}
+
+/*
+ * Affiche le dégradé de saturation pour que l'utilisateur puisse faire son choix
+ */
+void AfficheSaturation(float ton, float lum)
+{
+	float sat;
+	uint32_t color;
+	BSP_LCD_SelectLayer(1);
+	BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
+	BSP_LCD_FillRect(0, 251, 480, 21);
+	for(uint32_t i = 0;i<256;i++)
+    {
+		sat = (float)i/255;
+		color = FindCouleur(ton, sat, lum) | 0xFF000000;
+		for(char j = 0; j<18; j++)
+		{
+			BSP_LCD_DrawPixel(100+i, 252+j, color);
+		}
+    }
+	osDelay(200);
+}
+
+/*
+ * trouve la couleur RVB à partir de la couleur TSL:
+ * renvoi un entier de la forme RGB-888 : 0xRRVVBB
+ */
+uint32_t FindCouleur(float ton, float sat, float lum)
+{
+	char Red, Green, Blue;
+	uint32_t color = 0;
+	float R = 0;
+	float V = 0;
+	float B = 0;
+	float C;
+	float m;
+	float T_prime;
+	float X;
+	C = lum*sat;
+	m = lum-C;
+	T_prime = ton/60;
+	X = C*(1-absolu((modulo(T_prime, 2))-1));
+	if((T_prime>=0) && (T_prime<1))
+	{
+		R = C;
+		V = X;
+	}
+	else if(T_prime<2)
+	{
+		R = X;
+		V = C;
+	}
+	else if(T_prime<3)
+	{
+		B = X;
+		V = C;
+	}
+	else if(T_prime<4)
+	{
+		B = C;
+		V = X;
+	}
+	else if(T_prime<5)
+	{
+		B = C;
+		R = X;
+	}
+	else if(T_prime<2)
+	{
+		R = C;
+		B = X;
+	}
+	R = (R+m)*255;
+	V = (V+m)*255;
+	B = (B+m)*255;
+	Red = (int)R;
+	Green = (int)V;
+	Blue = (int)B;
+	color = (Red<<16)+(Green<<8)+Blue;
+	return color;
+}
+/*
+ * Renvoi la tonalité entre 0° et 360° à partir de la position du doigt sur la barre
+ */
+float FindTonalite(uint16_t pos)
+{
+	float ton;
+	ton = (float)pos;
+	ton = (ton/383)*360;
+	return ton;
+}
+
+/*
+ * Renvoi la Luminosité entre 0 et 1 à partir de la position du doigt sur la barre
+ */
+float FindLuminosite(uint16_t pos)
+{
+	return (float) pos/255;
+}
+
+/*
+ * Renvoi la Saturation entre 0 et 1 à partir de la position du doigt sur la barre
+ */
+float FindSaturation(uint16_t pos)
+{
+	return (float)pos/255;
+}
+
+float modulo(float val, char mod)
+{
+	uint32_t q;
+	q = (int) val/mod;
+	return(val - 2*q);
+}
+
+float absolu(float val)
+{
+	if(val<0) return -val;
+	else return val;
+}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -1523,7 +1744,7 @@ void StartDefaultTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+	  osDelay(1);
   }
   /* USER CODE END 5 */
 }
@@ -1543,9 +1764,17 @@ void StartMode(void const * argument)
   xLastWakeTime = xTaskGetTickCount();
   static TS_StateTypeDef  TS_State;
   char sous_menu = 0; // permet de savoir si on est dans un sous menu
+  char menu_couleur = 0; // permet de savoir si on est dans un des sous_menu couleur (tonalité, saturation, luminosité)
+  //valeur TSL pour la couleur
+  float ton = 180.0;
+  float lum = 0.5;
+  float sat = 0.5;
+  char layer = 0;
   char text[] = "   Layer   |   Pinceau   | Transparence |   Couleur   |    Taille   ";
   char text_layer[] = "Calque 1        |        Calque 2";
   char text_alpha[] = "Choisir la transparence : ";
+  char text_couleur[] = "tonalite  |    saturation    | luminosite";
+  couleur = FindCouleur(180,0.5,0.5)|0xFF000000;
   for(;;)
   {
 	  //xQueueReceive(myQueueUARTHandle, &etat, 25);
@@ -1578,6 +1807,7 @@ void StartMode(void const * argument)
 				   BSP_LCD_FillCircle(480-taille_menu/2, taille_menu/2, taille_menu/2-5);
 				   BSP_LCD_SetTextColor(couleur & 0xFF000000);
 				   BSP_LCD_FillCircle(480-taille_menu/2, 5*taille_menu/2, taille_menu/2-5);
+				   BSP_LCD_SelectLayer(layer);
 				   BSP_LCD_SetTextColor(couleur);
 				   xSemaphoreGive(myMutexLCDHandle);
 			   }
@@ -1611,26 +1841,12 @@ void StartMode(void const * argument)
 		  {
 			  if((TS_State.touchX[0]<240) && TS_State.touchY[0] > 250)
 			  {
-				  if(myMutexLCDHandle != NULL)
-				  {
-					   if(xSemaphoreTake(myMutexLCDHandle,100) == pdTRUE)
-					   {
-						   BSP_LCD_SelectLayer(0);
-						   xSemaphoreGive(myMutexLCDHandle);
-					   }
-				   }
-				   sous_menu = 0;
+				  layer = 0;
+				  sous_menu = 0;
 			  }
 			  else if((TS_State.touchX[0]>240) && TS_State.touchY[0] > 250)
 			  {
-				  if(myMutexLCDHandle != NULL)
-				  {
-					   if(xSemaphoreTake(myMutexLCDHandle,100) == pdTRUE)
-					   {
-						   BSP_LCD_SelectLayer(1);
-						   xSemaphoreGive(myMutexLCDHandle);
-					   }
-				   }
+				  layer = 1;
 				  sous_menu = 0;
 			  }
 		  }
@@ -1688,7 +1904,6 @@ void StartMode(void const * argument)
 				  sous_menu = 0;
 				  BSP_TS_GetState(&TS_State);
 			  }
-
 		  }
 		  if(sous_menu == 0) etat = 1;
 		  break;
@@ -1696,7 +1911,152 @@ void StartMode(void const * argument)
 	   * etat de sélection de la couleur
 	   */
 	  case 5 :
-		  etat = 0;
+		  if(sous_menu == 0)
+		  {
+			  if(myMutexLCDHandle != NULL)
+			  {
+				   if(xSemaphoreTake(myMutexLCDHandle,1000) == pdTRUE)
+				   {
+					   BSP_LCD_SelectLayer(1);
+					   BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
+					   BSP_LCD_FillRect(0, 251, 480, 21);
+					   BSP_LCD_SetTextColor(LCD_COLOR_RED);
+					   BSP_LCD_DisplayStringAt(0, 252,(uint8_t*) text_couleur, CENTER_MODE);
+					   xSemaphoreGive(myMutexLCDHandle);
+				   }
+			  }
+		  }
+		  sous_menu = 1;
+		  switch(menu_couleur)
+		  {
+		  /*
+		   * premier sous_menu : choix entre tonalité, saturation et luminosité
+		   */
+		  case 0 :
+			  BSP_TS_GetState(&TS_State);
+			  if(TS_State.touchDetected && menu_couleur == 0)
+			  {
+				  if((TS_State.touchX[0]<170) && TS_State.touchY[0] > 250)
+					  // clique sur tonalité
+				  {
+					  menu_couleur = 1;
+					  if(myMutexLCDHandle != NULL)
+					  {
+						   if(xSemaphoreTake(myMutexLCDHandle,1000) == pdTRUE)
+						   {
+							   AfficheTonalite();
+							   xSemaphoreGive(myMutexLCDHandle);
+						   }
+					  }
+				  }
+				  else if((TS_State.touchX[0]>310) && TS_State.touchY[0] > 250)
+					  //clique sur luminosité
+				  {
+					  menu_couleur = 2;
+					  if(myMutexLCDHandle != NULL)
+					  {
+						   if(xSemaphoreTake(myMutexLCDHandle,1000) == pdTRUE)
+						   {
+							   AfficheLuminosite(ton, sat);
+							   xSemaphoreGive(myMutexLCDHandle);
+						   }
+					  }
+				  }
+				  else if((TS_State.touchX[0]<310) && (TS_State.touchY[0] > 250) && (TS_State.touchX[0]>170))
+					  //clique sur saturation
+				  {
+					  menu_couleur = 3;
+					  if(myMutexLCDHandle != NULL)
+					  {
+						   if(xSemaphoreTake(myMutexLCDHandle,1000) == pdTRUE)
+						   {
+							   AfficheSaturation(ton, lum);
+							   xSemaphoreGive(myMutexLCDHandle);
+						   }
+					  }
+				  }
+			  }
+			  break;
+		  /*
+		   * on a affiché l'arc en ciel des tonalités, l'utilisateur choisit maintenant celle-ci.
+		   */
+		  case 1:
+			  BSP_TS_GetState(&TS_State);
+			  while(TS_State.touchDetected)
+			  {
+				  if((TS_State.touchX[0]>=50) && (TS_State.touchY[0] > 250) && (TS_State.touchX[0]<=433))
+				  {
+					  ton = FindTonalite(TS_State.touchX[0]-50);
+					  couleur = FindCouleur(ton, sat, lum) | (couleur & 0xFF000000);
+					  if(myMutexLCDHandle != NULL)
+					  {
+						   if(xSemaphoreTake(myMutexLCDHandle,100) == pdTRUE)
+						   {
+							   BSP_LCD_SetTextColor(couleur | 0xFF000000);
+							   BSP_LCD_FillCircle(480-taille_menu/2, taille_menu/2, taille_menu/2-5);
+							   xSemaphoreGive(myMutexLCDHandle);
+						   }
+					   }
+					  menu_couleur = 0;
+					  sous_menu = 0;
+					  BSP_TS_GetState(&TS_State);
+				  }
+			  }
+			  break;
+		  /*
+		   * On a Affiché le dégradé de luminosité, l'utilisateur chosit maintenant celle-ci
+		   */
+		  case 2:
+			  BSP_TS_GetState(&TS_State);
+			  while(TS_State.touchDetected)
+			  {
+				  if((TS_State.touchX[0]>=100) && (TS_State.touchY[0] > 250) && (TS_State.touchX[0]<=356))
+				  {
+					  lum = FindLuminosite(TS_State.touchX[0]-100);
+					  couleur = FindCouleur(ton, sat, lum) | (couleur & 0xFF000000);
+					  if(myMutexLCDHandle != NULL)
+					  {
+						   if(xSemaphoreTake(myMutexLCDHandle,100) == pdTRUE)
+						   {
+							   BSP_LCD_SetTextColor(couleur | 0xFF000000);
+							   BSP_LCD_FillCircle(480-taille_menu/2, taille_menu/2, taille_menu/2-5);
+							   xSemaphoreGive(myMutexLCDHandle);
+						   }
+					   }
+					  menu_couleur = 0;
+					  sous_menu = 0;
+					  BSP_TS_GetState(&TS_State);
+				  }
+			  }
+			  break;
+		  /*
+		   * On a Affiché le dégradé de saturation, l'utilisateur chosit maintenant celle-ci
+		   */
+		  case 3:
+			  BSP_TS_GetState(&TS_State);
+			  while(TS_State.touchDetected)
+			  {
+				  if((TS_State.touchX[0]>=100) && (TS_State.touchY[0] > 250) && (TS_State.touchX[0]<=356))
+				  {
+					  sat = FindSaturation(TS_State.touchX[0]-100);
+					  couleur = FindCouleur(ton, sat, lum) | (couleur & 0xFF000000);
+					  if(myMutexLCDHandle != NULL)
+					  {
+						   if(xSemaphoreTake(myMutexLCDHandle,100) == pdTRUE)
+						   {
+							   BSP_LCD_SetTextColor(couleur | 0xFF000000);
+							   BSP_LCD_FillCircle(480-taille_menu/2, taille_menu/2, taille_menu/2-5);
+							   xSemaphoreGive(myMutexLCDHandle);
+						   }
+					   }
+					  menu_couleur = 0;
+					  sous_menu = 0;
+					  BSP_TS_GetState(&TS_State);
+				  }
+			  }
+			  break;
+		  }
+		  if(sous_menu==0) etat = 1;
 		  break;
 	  /*
 	   * etat de sélection de la taille
