@@ -29,9 +29,6 @@
 #include <stdlib.h>
 #include "bitmap.h"
 
-//test reverse git
-//rsqetyycgfycydrytdretdfger
-
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -1609,6 +1606,7 @@ void AfficheLuminosite(float ton, float sat)
 		{
 			BSP_LCD_DrawPixel(100+i, 252+j, color);
 		}
+		//test reverse git
     }
 	osDelay(200);
 }

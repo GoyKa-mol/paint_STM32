@@ -29,9 +29,6 @@
 #include <stdlib.h>
 #include "bitmap.h"
 
-//test reverse git
-//rsqetyycgfycydrytdretdfger
-
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
