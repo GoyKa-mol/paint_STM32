@@ -6500,15 +6500,15 @@ void StartMode(void const * argument)
  8002b5c:	4b94      	ldr	r3, [pc, #592]	; (8002db0 <StartMode+0x5e4>)
  8002b5e:	885b      	ldrh	r3, [r3, #2]
  8002b60:	2bc8      	cmp	r3, #200	; 0xc8
- 8002b62:	d93f      	bls.n	8002be4 <StartMode+0x418>
+ 8002b62:	d939      	bls.n	8002bd8 <StartMode+0x40c>
  8002b64:	4b92      	ldr	r3, [pc, #584]	; (8002db0 <StartMode+0x5e4>)
  8002b66:	899b      	ldrh	r3, [r3, #12]
  8002b68:	2bfa      	cmp	r3, #250	; 0xfa
- 8002b6a:	d93b      	bls.n	8002be4 <StartMode+0x418>
+ 8002b6a:	d935      	bls.n	8002bd8 <StartMode+0x40c>
  8002b6c:	4b90      	ldr	r3, [pc, #576]	; (8002db0 <StartMode+0x5e4>)
  8002b6e:	885b      	ldrh	r3, [r3, #2]
  8002b70:	f5b3 7fe3 	cmp.w	r3, #454	; 0x1c6
- 8002b74:	d836      	bhi.n	8002be4 <StartMode+0x418>
+ 8002b74:	d830      	bhi.n	8002bd8 <StartMode+0x40c>
 			  {
 				  couleur &= 0x00FFFFFF; //on enlève l'ancienne transparence
  8002b76:	4b8f      	ldr	r3, [pc, #572]	; (8002db4 <StartMode+0x5e8>)
@@ -6563,10 +6563,11 @@ void StartMode(void const * argument)
  8002bd4:	f009 ffa0 	bl	800cb18 <xQueueGenericSend>
 					   }
 				   }
-				  sous_menu = 0;
+			  }
+			  sous_menu = 0;
  8002bd8:	2300      	movs	r3, #0
  8002bda:	f887 30df 	strb.w	r3, [r7, #223]	; 0xdf
-				  BSP_TS_GetState(&TS_State);
+			  BSP_TS_GetState(&TS_State);
  8002bde:	4874      	ldr	r0, [pc, #464]	; (8002db0 <StartMode+0x5e4>)
  8002be0:	f001 fe82 	bl	80048e8 <BSP_TS_GetState>
 		  while(TS_State.touchDetected)
@@ -6574,7 +6575,6 @@ void StartMode(void const * argument)
  8002be6:	781b      	ldrb	r3, [r3, #0]
  8002be8:	2b00      	cmp	r3, #0
  8002bea:	d1b7      	bne.n	8002b5c <StartMode+0x390>
-			  }
 		  }
 		  if(sous_menu == 0) etat = 1;
  8002bec:	f897 30df 	ldrb.w	r3, [r7, #223]	; 0xdf
@@ -6840,15 +6840,15 @@ void StartMode(void const * argument)
  8002dc0:	4b8f      	ldr	r3, [pc, #572]	; (8003000 <StartMode+0x834>)
  8002dc2:	885b      	ldrh	r3, [r3, #2]
  8002dc4:	2b31      	cmp	r3, #49	; 0x31
- 8002dc6:	d94b      	bls.n	8002e60 <StartMode+0x694>
+ 8002dc6:	d942      	bls.n	8002e4e <StartMode+0x682>
  8002dc8:	4b8d      	ldr	r3, [pc, #564]	; (8003000 <StartMode+0x834>)
  8002dca:	899b      	ldrh	r3, [r3, #12]
  8002dcc:	2bfa      	cmp	r3, #250	; 0xfa
- 8002dce:	d947      	bls.n	8002e60 <StartMode+0x694>
+ 8002dce:	d93e      	bls.n	8002e4e <StartMode+0x682>
  8002dd0:	4b8b      	ldr	r3, [pc, #556]	; (8003000 <StartMode+0x834>)
  8002dd2:	885b      	ldrh	r3, [r3, #2]
  8002dd4:	f5b3 7fd9 	cmp.w	r3, #434	; 0x1b2
- 8002dd8:	d242      	bcs.n	8002e60 <StartMode+0x694>
+ 8002dd8:	d239      	bcs.n	8002e4e <StartMode+0x682>
 				  {
 					  ton = FindTonalite(TS_State.touchX[0]-50);
  8002dda:	4b89      	ldr	r3, [pc, #548]	; (8003000 <StartMode+0x834>)
@@ -6906,13 +6906,14 @@ void StartMode(void const * argument)
  8002e4a:	f009 fe65 	bl	800cb18 <xQueueGenericSend>
 						   }
 					   }
-					  menu_couleur = 0;
+				  }
+				  menu_couleur = 0;
  8002e4e:	2300      	movs	r3, #0
  8002e50:	f887 30de 	strb.w	r3, [r7, #222]	; 0xde
-					  sous_menu = 0;
+				  sous_menu = 0;
  8002e54:	2300      	movs	r3, #0
  8002e56:	f887 30df 	strb.w	r3, [r7, #223]	; 0xdf
-					  BSP_TS_GetState(&TS_State);
+				  BSP_TS_GetState(&TS_State);
  8002e5a:	4869      	ldr	r0, [pc, #420]	; (8003000 <StartMode+0x834>)
  8002e5c:	f001 fd44 	bl	80048e8 <BSP_TS_GetState>
 			  while(TS_State.touchDetected)
@@ -6920,7 +6921,6 @@ void StartMode(void const * argument)
  8002e62:	781b      	ldrb	r3, [r3, #0]
  8002e64:	2b00      	cmp	r3, #0
  8002e66:	d1ab      	bne.n	8002dc0 <StartMode+0x5f4>
-				  }
 			  }
 			  break;
  8002e68:	e0b2      	b.n	8002fd0 <StartMode+0x804>
@@ -6938,15 +6938,15 @@ void StartMode(void const * argument)
  8002e72:	4b63      	ldr	r3, [pc, #396]	; (8003000 <StartMode+0x834>)
  8002e74:	885b      	ldrh	r3, [r3, #2]
  8002e76:	2b63      	cmp	r3, #99	; 0x63
- 8002e78:	d94b      	bls.n	8002f12 <StartMode+0x746>
+ 8002e78:	d942      	bls.n	8002f00 <StartMode+0x734>
  8002e7a:	4b61      	ldr	r3, [pc, #388]	; (8003000 <StartMode+0x834>)
  8002e7c:	899b      	ldrh	r3, [r3, #12]
  8002e7e:	2bfa      	cmp	r3, #250	; 0xfa
- 8002e80:	d947      	bls.n	8002f12 <StartMode+0x746>
+ 8002e80:	d93e      	bls.n	8002f00 <StartMode+0x734>
  8002e82:	4b5f      	ldr	r3, [pc, #380]	; (8003000 <StartMode+0x834>)
  8002e84:	885b      	ldrh	r3, [r3, #2]
  8002e86:	f5b3 7fb2 	cmp.w	r3, #356	; 0x164
- 8002e8a:	d842      	bhi.n	8002f12 <StartMode+0x746>
+ 8002e8a:	d839      	bhi.n	8002f00 <StartMode+0x734>
 				  {
 					  lum = FindLuminosite(TS_State.touchX[0]-100);
  8002e8c:	4b5c      	ldr	r3, [pc, #368]	; (8003000 <StartMode+0x834>)
@@ -7004,13 +7004,14 @@ void StartMode(void const * argument)
  8002efc:	f009 fe0c 	bl	800cb18 <xQueueGenericSend>
 						   }
 					   }
-					  menu_couleur = 0;
+				  }
+				  menu_couleur = 0;
  8002f00:	2300      	movs	r3, #0
  8002f02:	f887 30de 	strb.w	r3, [r7, #222]	; 0xde
-					  sous_menu = 0;
+				  sous_menu = 0;
  8002f06:	2300      	movs	r3, #0
  8002f08:	f887 30df 	strb.w	r3, [r7, #223]	; 0xdf
-					  BSP_TS_GetState(&TS_State);
+				  BSP_TS_GetState(&TS_State);
  8002f0c:	483c      	ldr	r0, [pc, #240]	; (8003000 <StartMode+0x834>)
  8002f0e:	f001 fceb 	bl	80048e8 <BSP_TS_GetState>
 			  while(TS_State.touchDetected)
@@ -7018,7 +7019,6 @@ void StartMode(void const * argument)
  8002f14:	781b      	ldrb	r3, [r3, #0]
  8002f16:	2b00      	cmp	r3, #0
  8002f18:	d1ab      	bne.n	8002e72 <StartMode+0x6a6>
-				  }
 			  }
 			  break;
  8002f1a:	e059      	b.n	8002fd0 <StartMode+0x804>
@@ -7036,15 +7036,15 @@ void StartMode(void const * argument)
  8002f24:	4b36      	ldr	r3, [pc, #216]	; (8003000 <StartMode+0x834>)
  8002f26:	885b      	ldrh	r3, [r3, #2]
  8002f28:	2b63      	cmp	r3, #99	; 0x63
- 8002f2a:	d94b      	bls.n	8002fc4 <StartMode+0x7f8>
+ 8002f2a:	d942      	bls.n	8002fb2 <StartMode+0x7e6>
  8002f2c:	4b34      	ldr	r3, [pc, #208]	; (8003000 <StartMode+0x834>)
  8002f2e:	899b      	ldrh	r3, [r3, #12]
  8002f30:	2bfa      	cmp	r3, #250	; 0xfa
- 8002f32:	d947      	bls.n	8002fc4 <StartMode+0x7f8>
+ 8002f32:	d93e      	bls.n	8002fb2 <StartMode+0x7e6>
  8002f34:	4b32      	ldr	r3, [pc, #200]	; (8003000 <StartMode+0x834>)
  8002f36:	885b      	ldrh	r3, [r3, #2]
  8002f38:	f5b3 7fb2 	cmp.w	r3, #356	; 0x164
- 8002f3c:	d842      	bhi.n	8002fc4 <StartMode+0x7f8>
+ 8002f3c:	d839      	bhi.n	8002fb2 <StartMode+0x7e6>
 				  {
 					  sat = FindSaturation(TS_State.touchX[0]-100);
  8002f3e:	4b30      	ldr	r3, [pc, #192]	; (8003000 <StartMode+0x834>)
@@ -7102,13 +7102,14 @@ void StartMode(void const * argument)
  8002fae:	f009 fdb3 	bl	800cb18 <xQueueGenericSend>
 						   }
 					   }
-					  menu_couleur = 0;
+				  }
+				  menu_couleur = 0;
  8002fb2:	2300      	movs	r3, #0
  8002fb4:	f887 30de 	strb.w	r3, [r7, #222]	; 0xde
-					  sous_menu = 0;
+				  sous_menu = 0;
  8002fb8:	2300      	movs	r3, #0
  8002fba:	f887 30df 	strb.w	r3, [r7, #223]	; 0xdf
-					  BSP_TS_GetState(&TS_State);
+				  BSP_TS_GetState(&TS_State);
  8002fbe:	4810      	ldr	r0, [pc, #64]	; (8003000 <StartMode+0x834>)
  8002fc0:	f001 fc92 	bl	80048e8 <BSP_TS_GetState>
 			  while(TS_State.touchDetected)
@@ -7116,7 +7117,6 @@ void StartMode(void const * argument)
  8002fc6:	781b      	ldrb	r3, [r3, #0]
  8002fc8:	2b00      	cmp	r3, #0
  8002fca:	d1ab      	bne.n	8002f24 <StartMode+0x758>
-				  }
 			  }
 			  break;
  8002fcc:	e000      	b.n	8002fd0 <StartMode+0x804>
