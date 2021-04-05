@@ -1,4 +1,4 @@
-14:04:37 **** Incremental Build of configuration Debug for project paint_projet ****
+00:36:26 **** Incremental Build of configuration Debug for project paint_projet ****
 make -j12 all 
 arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m7 -std=gnu11 -g3 -DUSE_HAL_DRIVER -DSTM32F746xx -DDEBUG -c -I../Middlewares/Third_Party/FreeRTOS/Source/include -I../Drivers/CMSIS/Include -I../Drivers/CMSIS/Device/ST/STM32F7xx/Include -I../Core/Inc -I../Drivers/STM32F7xx_HAL_Driver/Inc -I../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM7/r0p1 -I../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS -I../Drivers/STM32F7xx_HAL_Driver/Inc/Legacy -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/main.o"
 arm-none-eabi-gcc -o "paint_projet.elf" @"objects.list"   -mcpu=cortex-m7 -T"C:\Users\admin\Documents\travail\M1_semestre2\442\projet_paint\paint_STM32\paint_projet\STM32F746NGHX_FLASH.ld" --specs=nosys.specs -Wl,-Map="paint_projet.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
@@ -8,7 +8,7 @@ arm-none-eabi-objdump -h -S  paint_projet.elf  > "paint_projet.list"
 arm-none-eabi-objcopy  -O binary  paint_projet.elf  "paint_projet.bin"
 arm-none-eabi-size   paint_projet.elf 
    text	   data	    bss	    dec	    hex	filename
-  71152	    188	  37684	 109024	  1a9e0	paint_projet.elf
+  72680	   4268	  37684	 114632	  1bfc8	paint_projet.elf
 Finished building: default.size.stdout
  
 Finished building: paint_projet.bin
@@ -16,5 +16,5 @@ Finished building: paint_projet.bin
 Finished building: paint_projet.list
  
 
-14:04:39 Build Finished. 0 errors, 0 warnings. (took 1s.465ms)
+00:36:28 Build Finished. 0 errors, 0 warnings. (took 1s.484ms)
 

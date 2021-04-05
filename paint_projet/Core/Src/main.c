@@ -29,6 +29,9 @@
 #include <stdlib.h>
 #include "bitmap.h"
 
+char ennemi[4] = {0,0,0,0};
+int score = 0;
+char perdu = 0;
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -76,8 +79,6 @@ SDRAM_HandleTypeDef hsdram1;
 
 osThreadId defaultTaskHandle;
 osThreadId ModeHandle;
-osThreadId PeindreHandle;
-osThreadId TaskEtatHandle;
 osMessageQId myQueueUARTHandle;
 osMutexId myMutexLCDHandle;
 /* USER CODE BEGIN PV */
@@ -107,8 +108,6 @@ static void MX_FMC_Init(void);
 static void MX_DMA2D_Init(void);
 void StartDefaultTask(void const * argument);
 void StartMode(void const * argument);
-void StartPeindre(void const * argument);
-void StartTaskEtat(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -116,10 +115,15 @@ void StartTaskEtat(void const * argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+<<<<<<< Updated upstream
+#define Radius 15
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
+=======
 #define taille_menu 50 // largeur à droite du menu, doit être pair
 #define etat_max 6 // nombre d'état possible (état 0 exclu)
+#define max_brush 1
 char radius = 10;
-char brush = 0;
+char brush = 1;
 /*
  etat :
  	 '0' : rien
@@ -136,6 +140,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 char TestConditionBord(uint16_t x,uint16_t y,uint16_t radius);
 void LCD_PAINTBRUSH(uint16_t x, uint16_t y,uint16_t rad);
+void LCD_PAINTBRUSH_SAMPLE(uint16_t x, uint16_t y,uint16_t rad);
 void AfficheTonalite();
 uint32_t FindCouleur(float ton, float sat, float lum);
 void AfficheLuminosite(float ton, float sat);
@@ -145,8 +150,8 @@ float FindTonalite(uint16_t pos);
 float FindLuminosite(uint16_t pos);
 float modulo(float val, char mod);
 float absolu(float val);
+>>>>>>> Stashed changes
 uint8_t rxbuffer[10]; //var globale
-uint32_t couleur;
 /* USER CODE END 0 */
 
 /**
@@ -156,7 +161,11 @@ uint32_t couleur;
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-   	char text[50]={};
+<<<<<<< Updated upstream
+ 	char text[50]={};
+=======
+    char text[50]={};
+>>>>>>> Stashed changes
 	static TS_StateTypeDef  TS_State;
 	uint32_t potl,potr,joystick_h, joystick_v;
 	ADC_ChannelConfTypeDef sConfig = {0};
@@ -205,16 +214,11 @@ int main(void)
   BSP_LCD_LayerDefaultInit(0, LCD_FB_START_ADDRESS);
   BSP_LCD_LayerDefaultInit(1, LCD_FB_START_ADDRESS+ BSP_LCD_GetXSize()*BSP_LCD_GetYSize()*4);
   BSP_LCD_DisplayOn();
-  BSP_LCD_SetFont(&Font12);
-  BSP_LCD_SetBackColor(LCD_COLOR_WHITE);
   BSP_LCD_SelectLayer(1);
-  BSP_LCD_Clear(LCD_COLOR_TRANSPARENT);
-  BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
-  BSP_LCD_FillRect(0, 245, 480, 5);
-  BSP_LCD_FillRect(480-5-taille_menu, 0, 5, 245);
-  BSP_LCD_SelectLayer(0);
   BSP_LCD_Clear(LCD_COLOR_WHITE);
-  BSP_LCD_SetTextColor(LCD_COLOR_RED);
+  BSP_LCD_SetFont(&Font24);
+  BSP_LCD_SetTextColor(LCD_COLOR_BLUE);
+  BSP_LCD_SetBackColor(LCD_COLOR_WHITE);
 
   BSP_TS_Init(BSP_LCD_GetXSize(), BSP_LCD_GetYSize());
   HAL_UART_Receive_IT(&huart1,rxbuffer,1);
@@ -249,20 +253,12 @@ int main(void)
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityIdle, 0, 128);
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* definition and creation of Mode */
-  osThreadDef(Mode, StartMode, osPriorityAboveNormal, 0, 4096);
+  osThreadDef(Mode, StartMode, osPriorityIdle, 0, 512);
   ModeHandle = osThreadCreate(osThread(Mode), NULL);
-
-  /* definition and creation of Peindre */
-  osThreadDef(Peindre, StartPeindre, osPriorityLow, 0, 1024);
-  PeindreHandle = osThreadCreate(osThread(Peindre), NULL);
-
-  /* definition and creation of TaskEtat */
-  osThreadDef(TaskEtat, StartTaskEtat, osPriorityNormal, 0, 1024);
-  TaskEtatHandle = osThreadCreate(osThread(TaskEtat), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -478,7 +474,7 @@ static void MX_ADC3_Init(void)
   }
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
-  sConfig.Channel = ADC_CHANNEL_7;
+  sConfig.Channel = ADC_CHANNEL_6;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc3, &sConfig) != HAL_OK)
@@ -1436,11 +1432,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
   HAL_GPIO_Init(ULPI_NXT_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : BP_joystick_Pin */
-  GPIO_InitStruct.Pin = BP_joystick_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  /*Configure GPIO pins : BP_JOYSTICK_Pin RMII_RXER_Pin */
+  GPIO_InitStruct.Pin = BP_JOYSTICK_Pin|RMII_RXER_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(BP_joystick_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
   /*Configure GPIO pins : ULPI_STP_Pin ULPI_DIR_Pin */
   GPIO_InitStruct.Pin = ULPI_STP_Pin|ULPI_DIR_Pin;
@@ -1457,12 +1453,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(EXT_RST_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : RMII_RXER_Pin */
-  GPIO_InitStruct.Pin = RMII_RXER_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(RMII_RXER_GPIO_Port, &GPIO_InitStruct);
-
   /*Configure GPIO pins : ULPI_CLK_Pin ULPI_D0_Pin */
   GPIO_InitStruct.Pin = ULPI_CLK_Pin|ULPI_D0_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -1470,10 +1460,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   GPIO_InitStruct.Alternate = GPIO_AF10_OTG_HS;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
-  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
 }
 
@@ -1487,6 +1473,8 @@ Message = rxbuffer[0];
 xQueueSendFromISR(myQueueUARTHandle, &Message, 0);
 HAL_GPIO_WritePin(LED14_GPIO_Port,LED14_Pin,0);
 }
+<<<<<<< Updated upstream
+=======
 /*
  * Interuption sur le click joystick
  */
@@ -1510,12 +1498,41 @@ char TestConditionBord(uint16_t x, uint16_t y, uint16_t rad)
 	}
 	return bool;
 }
-
+/*
+ * dessine la forme du pinceau actuel pour la zone de dessin
+ */
 void LCD_PAINTBRUSH(uint16_t x, uint16_t y,uint16_t rad)
 {
-	if(brush == 0)
+	switch(brush)
 	{
-	   BSP_LCD_FillCircle(x, y, rad);
+	case 0 :
+		BSP_LCD_FillCircle(x, y, rad);
+		break;
+	case 1 :
+		BSP_LCD_FillRect(0, 0, 425, 246);
+	}
+}
+/*
+ * Dessine la forme du pinceau actuel pour la zone menu (fonction séparé car
+ * pour la fonction de remplissage du fond on veut juste afficher un logo).
+ */
+void LCD_PAINTBRUSH_SAMPLE(uint16_t x, uint16_t y,uint16_t rad)
+{
+	uint32_t color;
+	switch(brush)
+	{
+	case 0 :
+		BSP_LCD_FillCircle(x, y, rad);
+		break;
+	case 1 :
+		for(int i=0; i<34;i++)
+		{
+			for(int j=0; j<30;j++)
+			{
+				color = brush_remplir[i][j] | (brush_remplir[i][j]<<8) | (brush_remplir[i][j]<<16) | 0xFF000000;
+				BSP_LCD_DrawPixel(x-15+j, y-15+i, color);
+			}
+		}
 	}
 }
 /*
@@ -1676,7 +1693,7 @@ uint32_t FindCouleur(float ton, float sat, float lum)
 		B = C;
 		R = X;
 	}
-	else if(T_prime<2)
+	else if(T_prime<6)
 	{
 		R = C;
 		B = X;
@@ -1716,19 +1733,8 @@ float FindSaturation(uint16_t pos)
 {
 	return (float)pos/255;
 }
+>>>>>>> Stashed changes
 
-float modulo(float val, char mod)
-{
-	uint32_t q;
-	q = (int) val/mod;
-	return(val - 2*q);
-}
-
-float absolu(float val)
-{
-	if(val<0) return -val;
-	else return val;
-}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -1744,7 +1750,7 @@ void StartDefaultTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-	  osDelay(1);
+    osDelay(1);
   }
   /* USER CODE END 5 */
 }
@@ -1763,6 +1769,16 @@ void StartMode(void const * argument)
   TickType_t xLastWakeTime;
   xLastWakeTime = xTaskGetTickCount();
   static TS_StateTypeDef  TS_State;
+<<<<<<< Updated upstream
+  char etat = 'p';
+  char layer = '0';
+  char message_layer[] = "selectionner le layer (1 ou 2)";
+  BSP_LCD_SetTransparency(1, 0x00);
+  BSP_LCD_Clear(LCD_COLOR_WHITE);
+  BSP_LCD_SetTextColor(LCD_COLOR_RED);
+  BSP_LCD_SetTransparency(1, 0x00);
+=======
+  char radius_prec; //rayon précédent pour supprimer le curseur dans la sélection
   char sous_menu = 0; // permet de savoir si on est dans un sous menu
   char menu_couleur = 0; // permet de savoir si on est dans un des sous_menu couleur (tonalité, saturation, luminosité)
   //valeur TSL pour la couleur
@@ -1773,13 +1789,19 @@ void StartMode(void const * argument)
   char text[] = "   Layer   |   Pinceau   | Transparence |   Couleur   |    Taille   ";
   char text_layer[] = "Calque 1        |        Calque 2";
   char text_alpha[] = "Choisir la transparence : ";
-  char text_couleur[] = "tonalite  |    saturation    | luminosite";
+  char text_couleur[] = "Tonalite  |    Saturation    | Luminosite";
   couleur = FindCouleur(180,0.5,0.5)|0xFF000000;
+  char text_taille[] = "Taille du pinceau :   px";
+  char text_brush[] = " <<<<            Valider            >>>>";
+>>>>>>> Stashed changes
   for(;;)
   {
-	  //xQueueReceive(myQueueUARTHandle, &etat, 25);
+	  xQueueReceive(myQueueUARTHandle, &etat, 25);
 	  switch(etat)
 	  {
+<<<<<<< Updated upstream
+	  case 'p' :
+=======
 	  /*
 	   *  etat de repos aucun mode n'est changé
 	   */
@@ -1800,7 +1822,7 @@ void StartMode(void const * argument)
 				   BSP_LCD_SetTextColor(LCD_COLOR_RED);
 				   BSP_LCD_DisplayStringAt(0, 252,(uint8_t*) text, CENTER_MODE);
 				   BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
-				   LCD_PAINTBRUSH(480-taille_menu/2, 3*taille_menu/2, taille_menu/2-5);
+				   LCD_PAINTBRUSH_SAMPLE(480-taille_menu/2, 3*taille_menu/2, taille_menu/2-5);
 				   BSP_LCD_SetTextColor(0xFFFF00FF); //violet
 				   BSP_LCD_FillRect(98*etat_int-170, 265, 35, 5);
 				   BSP_LCD_SetTextColor(couleur | 0xFF000000);
@@ -1836,75 +1858,102 @@ void StartMode(void const * argument)
 
 		  }
 		  sous_menu = 1;
+>>>>>>> Stashed changes
 		  BSP_TS_GetState(&TS_State);
 		  if(TS_State.touchDetected)
 		  {
-			  if((TS_State.touchX[0]<240) && TS_State.touchY[0] > 250)
-			  {
-				  layer = 0;
-				  sous_menu = 0;
-			  }
-			  else if((TS_State.touchX[0]>240) && TS_State.touchY[0] > 250)
-			  {
-				  layer = 1;
-				  sous_menu = 0;
-			  }
+			  BSP_LCD_FillCircle(TS_State.touchX[0],TS_State.touchY[0],20);
 		  }
+<<<<<<< Updated upstream
+=======
 		  if(sous_menu == 0) etat = 1; //on revient au menu de base
 		  break;
 	  /*
 	   * etat de sélection du pinceau
 	   */
 	  case 3 :
-		  etat = 0;
-		  break;
-	  /*
-	   * etat de sélection de la transparence
-	   */
-	  case 4 :
 		  if(sous_menu == 0)
 		  {
 			  if(myMutexLCDHandle != NULL)
 			  {
-				   if(xSemaphoreTake(myMutexLCDHandle,1000) == pdTRUE)
+				   if(xSemaphoreTake(myMutexLCDHandle,1) == pdTRUE)
 				   {
 					   BSP_LCD_SelectLayer(1);
+					   BSP_LCD_SetFont(&Font12);
 					   BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
 					   BSP_LCD_FillRect(0, 251, 480, 21);
 					   BSP_LCD_SetTextColor(LCD_COLOR_RED);
-					   BSP_LCD_DisplayStringAt(0, 252,(uint8_t*) text_alpha, LEFT_MODE);
-					   for(uint32_t i = 0;i<256; i++)
-					   {
-						   for(char j = 0; j<18; j++)
-						   {
-							   BSP_LCD_DrawPixel(200+i, 252+j, i << 24);
-						   }
-					   }
+					   BSP_LCD_DisplayStringAt(0, 252,(uint8_t*) text_brush, CENTER_MODE);
 					   xSemaphoreGive(myMutexLCDHandle);
 				   }
 			   }
+
 		  }
 		  sous_menu = 1;
 		  BSP_TS_GetState(&TS_State);
-		  while(TS_State.touchDetected)
+		  if(TS_State.touchDetected)
 		  {
-			  if((TS_State.touchX[0]>200) && (TS_State.touchY[0] > 250) && (TS_State.touchX[0]<455))
+			  if((TS_State.touchX[0]<190) && TS_State.touchY[0] > 250)
 			  {
-				  couleur &= 0x00FFFFFF; //on enlève l'ancienne transparence
-				  couleur |= ((TS_State.touchX[0]-200)<<24);
+				  brush -= 1;
+				  if(brush<0) brush = max_brush;
 				  if(myMutexLCDHandle != NULL)
 				  {
-					   if(xSemaphoreTake(myMutexLCDHandle,100) == pdTRUE)
+					   if(xSemaphoreTake(myMutexLCDHandle,1) == pdTRUE)
 					   {
-						   BSP_LCD_SetTextColor(couleur & 0xFF000000);
-						   BSP_LCD_FillCircle(480-taille_menu/2, 5*taille_menu/2, taille_menu/2-5);
-						   xSemaphoreGive(myMutexLCDHandle);
+						  BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
+						  BSP_LCD_FillRect(480-taille_menu , taille_menu, taille_menu-1, taille_menu);
+						  BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
+						  LCD_PAINTBRUSH_SAMPLE(480-taille_menu/2, 3*taille_menu/2, taille_menu/2-5);
+						  BSP_LCD_SetTextColor(couleur);
+						  xSemaphoreGive(myMutexLCDHandle);
 					   }
-				   }
+				  }
+				  while(TS_State.touchDetected) BSP_TS_GetState(&TS_State);;
 			  }
-			  sous_menu = 0;
-			  BSP_TS_GetState(&TS_State);
+			  else if((TS_State.touchX[0]>290) && TS_State.touchY[0] > 250)
+			  {
+				  brush += 1;
+				  if(brush>max_brush) brush = 0;
+				  if(myMutexLCDHandle != NULL)
+				  {
+					   if(xSemaphoreTake(myMutexLCDHandle,1) == pdTRUE)
+					   {
+						  BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
+						  BSP_LCD_FillRect(480-taille_menu , taille_menu, taille_menu-1, taille_menu);
+						  BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
+						  LCD_PAINTBRUSH_SAMPLE(480-taille_menu/2, 3*taille_menu/2, taille_menu/2-5);
+						  BSP_LCD_SetTextColor(couleur);
+						  xSemaphoreGive(myMutexLCDHandle);
+					   }
+				  }
+				  while(TS_State.touchDetected) BSP_TS_GetState(&TS_State);;
+			  }
+			  else if((TS_State.touchX[0]>190) && (TS_State.touchY[0] > 250) && (TS_State.touchX[0]<290))
+			  {
+				  sous_menu = 0;
+			  }
 		  }
+		  if(sous_menu == 0) etat = 1; //on revient au menu de base
+>>>>>>> Stashed changes
+		  break;
+	  case 'l' :
+		  HAL_UART_Transmit(&huart1, message_layer, 31, 10);
+		  xQueueReceive(myQueueUARTHandle, &layer, 2000);
+		  layer = layer - 48;
+		  if(layer==0)
+		  {
+			  BSP_LCD_SelectLayer(layer);
+			  BSP_LCD_SetTextColor(LCD_COLOR_RED);
+		  }
+		  if(layer==1)
+		  {
+			  BSP_LCD_SelectLayer(layer);
+			  BSP_LCD_SetTextColor(LCD_COLOR_GREEN);
+		  }
+<<<<<<< Updated upstream
+		  etat = 'p';
+=======
 		  if(sous_menu == 0) etat = 1;
 		  break;
 	  /*
@@ -1984,7 +2033,7 @@ void StartMode(void const * argument)
 			  BSP_TS_GetState(&TS_State);
 			  while(TS_State.touchDetected)
 			  {
-				  if((TS_State.touchX[0]>=50) && (TS_State.touchY[0] > 250) && (TS_State.touchX[0]<=433))
+				  if((TS_State.touchX[0]>=50) && (TS_State.touchY[0] > 250) && (TS_State.touchX[0]<433))
 				  {
 					  ton = FindTonalite(TS_State.touchX[0]-50);
 					  couleur = FindCouleur(ton, sat, lum) | (couleur & 0xFF000000);
@@ -2062,115 +2111,66 @@ void StartMode(void const * argument)
 	   * etat de sélection de la taille
 	   */
 	  case 6 :
-		  etat = 0;
+		  if(sous_menu == 0)
+		  {
+			  if(myMutexLCDHandle != NULL)
+			  {
+				   if(xSemaphoreTake(myMutexLCDHandle,1000) == pdTRUE)
+				   {
+					   BSP_LCD_SelectLayer(1);
+					   BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
+					   BSP_LCD_FillRect(0, 251, 480, 21);
+					   BSP_LCD_SetTextColor(LCD_COLOR_RED);
+					   BSP_LCD_DisplayStringAt(0, 252,(uint8_t*) text_taille, LEFT_MODE);
+					   BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
+					   BSP_LCD_DrawHLine(220, 261, 240);
+					   BSP_LCD_DrawVLine(220, 252, 18);
+					   BSP_LCD_DrawVLine(460, 252, 18);
+					   BSP_LCD_SetTextColor(LCD_COLOR_RED);
+					   BSP_LCD_FillRect(220+12*radius, 252, 5, 18);
+					   BSP_LCD_SetTextColor(couleur);
+					   xSemaphoreGive(myMutexLCDHandle);
+				   }
+			  }
+		  }
+		  sous_menu = 1;
+		  BSP_TS_GetState(&TS_State);
+		  while(TS_State.touchDetected)
+		  {
+			  if((TS_State.touchX[0]>220) && (TS_State.touchY[0] > 250) && (TS_State.touchX[0]<460))
+			  {
+				  radius_prec = radius;
+				  radius = (TS_State.touchX[0]-208)/12;
+				  if(myMutexLCDHandle != NULL)
+				  {
+					   if(xSemaphoreTake(myMutexLCDHandle,100) == pdTRUE)
+					   {
+						   BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
+						   BSP_LCD_FillRect(220+12*radius_prec, 252, 5, 18);
+						   BSP_LCD_SetTextColor(LCD_COLOR_BLACK);
+						   BSP_LCD_DrawHLine(220, 261, 240);
+						   BSP_LCD_SetTextColor(LCD_COLOR_RED);
+						   BSP_LCD_FillRect(220+12*radius, 252, 5, 18);
+						   xSemaphoreGive(myMutexLCDHandle);
+					   }
+				   }
+			  }
+			  sous_menu = 0;
+			  BSP_TS_GetState(&TS_State);
+		  }
+		  if(sous_menu==0) etat = 1;
 		  break;
+	  /*
+	   * etat de clear de la page de dessin.
+	   */
+	  case 7 :
+		  etat = 1;
+		  break;
+>>>>>>> Stashed changes
 	  }
 	  vTaskDelayUntil(&xLastWakeTime, 100);
   }
   /* USER CODE END StartMode */
-}
-
-/* USER CODE BEGIN Header_StartPeindre */
-/**
-* @brief Function implementing the Peindre thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartPeindre */
-void StartPeindre(void const * argument)
-{
-  /* USER CODE BEGIN StartPeindre */
-  TickType_t xLastWakeTime;
-  xLastWakeTime = xTaskGetTickCount();
-  static TS_StateTypeDef  TS_State;
-  /* Infinite loop */
-  for(;;)
-  {
-
-	  BSP_TS_GetState(&TS_State);
-	  if(TS_State.touchDetected && (TestConditionBord(TS_State.touchX[0], TS_State.touchY[0], radius)))
-	  {
-		  if(myMutexLCDHandle != NULL)
-		   {
-			   if(xSemaphoreTake(myMutexLCDHandle,1) == pdTRUE)
-			   {
-				   LCD_PAINTBRUSH(TS_State.touchX[0],TS_State.touchY[0],radius);
-				   xSemaphoreGive(myMutexLCDHandle);
-			   }
-		   }
-	  }
-	  vTaskDelayUntil(&xLastWakeTime, 3);
-  }
-  /* USER CODE END StartPeindre */
-}
-
-/* USER CODE BEGIN Header_StartTaskEtat */
-/**
-* @brief Function implementing the TaskEtat thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartTaskEtat */
-void StartTaskEtat(void const * argument)
-{
-  /* USER CODE BEGIN StartTaskEtat */
-  TickType_t xLastWakeTime;
-  xLastWakeTime = xTaskGetTickCount();
-  ADC_ChannelConfTypeDef sConfig = {0};
-  sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
-  sConfig.Channel = ADC_CHANNEL_8;
-  HAL_ADC_ConfigChannel(&hadc3, &sConfig);
-  char etat_prec = 2;
-  uint16_t joystick_h;
-  /* Infinite loop */
-  for(;;)
-  {
-	  if(etat == 0)
-	  {
-		  HAL_ADC_Start(&hadc1);
-		  while(HAL_ADC_PollForConversion(&hadc1, 100)!=HAL_OK);
-		  joystick_h = HAL_ADC_GetValue(&hadc1);
-		  if(joystick_h > 2500)
-		  {
-			  etat_prec = etat_int;
-			  etat_int -= 1;
-			  if(etat_int < 2) etat_int = etat_max;
-			  if(myMutexLCDHandle != NULL)
-			   {
-				   if(xSemaphoreTake(myMutexLCDHandle,1) == pdTRUE)
-				   {
-					   BSP_LCD_SelectLayer(1);
-					   BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
-					   BSP_LCD_FillRect(98*etat_prec-170, 265, 35, 5);
-					   BSP_LCD_SetTextColor(0xFFFF00FF);
-					   BSP_LCD_FillRect(98*etat_int-170, 265, 35, 5);
-					   xSemaphoreGive(myMutexLCDHandle);
-				   }
-			   }
-		  }
-		  else if(joystick_h < 1500)
-		  {
-			  etat_prec = etat_int;
-			  etat_int += 1;
-			  if (etat_int > etat_max) etat_int = 2;
-			  if(myMutexLCDHandle != NULL)
-			   {
-				   if(xSemaphoreTake(myMutexLCDHandle,1) == pdTRUE)
-				   {
-					   BSP_LCD_SelectLayer(1);
-					   BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
-					   BSP_LCD_FillRect(98*etat_prec-170, 265, 35, 5);
-					   BSP_LCD_SetTextColor(0xFFFF00FF); //violet
-					   BSP_LCD_FillRect(98*etat_int-170, 265, 35, 5);
-					   xSemaphoreGive(myMutexLCDHandle);
-				   }
-			   }
-		  }
-	  }
-	  vTaskDelayUntil(&xLastWakeTime, 300);
-  }
-  /* USER CODE END StartTaskEtat */
 }
 
  /**
